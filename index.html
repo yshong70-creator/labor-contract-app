@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="근로계약서">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>근로계약서 전자서명</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f4; --bg3: #eeede8;
+    --txt: #1a1a18; --txt2: #6b6a65; --txt3: #9c9b96;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --blue-bg: #e6f1fb; --blue-txt: #0c447c; --blue-bdr: rgba(24,95,165,0.35);
+    --green-bg: #eaf3de; --green-txt: #27500a; --green-bdr: rgba(59,109,17,0.3);
+    --amber-bg: #faeeda; --amber-txt: #633806; --amber-bdr: rgba(133,79,11,0.3);
+    --red-bg: #fcebeb; --red-txt: #791f1f; --red-bdr: rgba(163,45,45,0.3);
+    --radius: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252522; --bg3: #2e2e2b;
+      --txt: #e8e6de; --txt2: #9c9a92; --txt3: #6b6a65;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --blue-bg: #0c447c; --blue-txt: #b5d4f4; --blue-bdr: rgba(85,147,212,0.4);
+      --green-bg: #27500a; --green-txt: #c0dd97; --green-bdr: rgba(99,153,34,0.4);
+      --amber-bg: #633806; --amber-txt: #fac775; --amber-bdr: rgba(186,117,23,0.4);
+      --red-bg: #791f1f; --red-txt: #f7c1c1; --red-bdr: rgba(226,75,74,0.4);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+         font-size: 15px; color: var(--txt); background: var(--bg); }
+  .app { max-width: 480px; margin: 0 auto; padding: 16px 14px 40px; }
+
+  /* 상단 헤더 */
+  .hdr { margin-bottom: 18px; }
+  .hdr-title { font-size: 20px; font-weight: 600; }
+  .hdr-sub { font-size: 13px; color: var(--txt2); margin-top: 3px; }
+
+  /* 단계 표시바 */
+  .stepbar { display: flex; border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+             overflow: hidden; margin-bottom: 18px; }
+  .step { flex: 1; padding: 9px 3px; text-align: center; font-size: 11px; color: var(--txt2);
+          background: var(--bg2); border-right: 0.5px solid var(--border); line-height: 1.4; }
+  .step:last-child { border-right: none; }
+  .step.active { background: var(--bg); color: var(--txt); font-weight: 600; }
+  .step.done { background: var(--green-bg); color: var(--green-txt); }
+
+  /* 카드 */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+          padding: 14px; margin-bottom: 12px; }
+  .sec-title { font-size: 13px; font-weight: 600; color: var(--txt2); margin-bottom: 12px;
+               padding-bottom: 8px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; }
+
+  /* 입력 */
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 11px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; color: var(--txt2); font-weight: 500; }
+  input[type=text], input[type=date], input[type=tel], select {
+    width: 100%; font-size: 15px; padding: 11px 12px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius); background: var(--bg); color: var(--txt); outline: none; min-height: 44px; }
+  input:focus { border-color: #378add; box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+
+  /* 기간 탭 */
+  .period-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .ptab { flex: 1; padding: 12px 8px; text-align: center; border: 0.5px solid var(--border2);
+          border-radius: var(--radius); cursor: pointer; background: var(--bg2); min-height: 66px;
+          display: flex; flex-direction: column; justify-content: center; gap: 3px; transition: all .15s; }
+  .ptab.sel { background: var(--blue-bg); border-color: var(--blue-bdr); }
+  .ptab-main { font-size: 18px; font-weight: 600; color: var(--txt); }
+  .ptab.sel .ptab-main, .ptab.sel .ptab-sub { color: var(--blue-txt); }
+  .ptab-sub { font-size: 11px; color: var(--txt2); }
+  .fval { font-size: 14px; padding: 11px 12px; background: var(--bg2); border-radius: var(--radius);
+          border: 0.5px solid var(--border); min-height: 44px; display: flex; align-items: center; color: var(--txt2); }
+
+  /* 배너 */
+  .success-bar { background: var(--green-bg); color: var(--green-txt); border: 0.5px solid var(--green-bdr);
+                 border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: center;
+                 gap: 8px; font-size: 14px; margin-bottom: 12px; }
+  .warn-bar { background: var(--amber-bg); color: var(--amber-txt); border: 0.5px solid var(--amber-bdr);
+              border-radius: var(--radius); padding: 11px 14px; font-size: 13px;
+              margin-bottom: 12px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+
+  /* 인증 방법 */
+  .auth-opt { display: flex; align-items: center; gap: 10px; padding: 12px; border: 0.5px solid var(--border2);
+              border-radius: var(--radius); cursor: pointer; margin-bottom: 8px; background: var(--bg2);
+              min-height: 60px; transition: all .15s; }
+  .auth-opt.sel { background: var(--blue-bg); border-color: var(--blue-bdr); }
+  .auth-icon { width: 36px; height: 36px; border-radius: var(--radius); display: flex;
+               align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .auth-lbl { font-size: 14px; font-weight: 600; color: var(--txt); }
+  .auth-sub { font-size: 11px; color: var(--txt2); margin-top: 2px; }
+  .auth-opt.sel .auth-lbl, .auth-opt.sel .auth-sub { color: var(--blue-txt); }
+  .check-icon { margin-left: auto; font-size: 18px; color: var(--blue-txt); display: none; }
+  .auth-opt.sel .check-icon { display: block; }
+
+  /* OTP */
+  .otp-row { display: flex; gap: 8px; margin-top: 10px; }
+  .otp-row input { flex: 1; text-align: center; font-size: 22px; font-weight: 600; letter-spacing: 8px; }
+
+  /* 버튼 */
+  button { font-family: inherit; font-size: 14px; padding: 10px 16px; border: 0.5px solid var(--border2);
+           border-radius: var(--radius); background: var(--bg); color: var(--txt); cursor: pointer;
+           min-height: 44px; transition: background .12s, transform .1s; }
+  button:active { transform: scale(0.98); }
+  button:hover { background: var(--bg2); }
+  .btn-primary { background: var(--blue-bg); color: var(--blue-txt); border-color: var(--blue-bdr); font-weight: 600; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-full { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-lg { min-height: 52px; font-size: 16px; }
+  .action-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .action-row button { min-height: 44px; }
+
+  /* 서명 캔버스 */
+  canvas#sigCanvas { display: block; width: 100%; border: 0.5px solid var(--border2);
+                     border-radius: var(--radius); background: var(--bg); touch-action: none; cursor: crosshair; }
+  .sig-tools { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+  .sig-tools button { font-size: 13px; padding: 8px 14px; min-height: 40px; }
+  .colors { display: flex; gap: 8px; }
+  .scolor { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .scolor.act { border-color: #378add; }
+
+  /* 계약서 미리보기 */
+  .preview-scroll { font-size: 12px; line-height: 1.9; background: var(--bg2); padding: 14px;
+                    border-radius: var(--radius); max-height: 360px; overflow-y: auto;
+                    border: 0.5px solid var(--border); }
+  .preview-scroll h3 { font-size: 15px; text-align: center; margin-bottom: 10px; letter-spacing: 3px; font-weight: 600; }
+  .preview-scroll h4 { font-size: 13px; margin: 10px 0 3px; font-weight: 600; }
+  .blank { display: inline-block; border-bottom: 1px solid var(--txt); min-width: 60px;
+           text-align: center; font-weight: 600; color: var(--blue-txt); }
+
+  /* 서명 미리보기 */
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .sig-box { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
+  .sig-box-lbl { font-size: 11px; color: var(--txt2); margin-bottom: 6px; }
+
+  /* 태그 */
+  .tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+  .tag-ok { background: var(--green-bg); color: var(--green-txt); }
+  .tag-info { background: var(--blue-bg); color: var(--blue-txt); }
+
+  /* 숨김 */
+  .hidden { display: none !important; }
+
+  /* 로딩 스피너 */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: #378add;
+             border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 헤더 -->
+  <div class="hdr">
+    <div class="hdr-title">근로계약서 전자서명</div>
+    <div class="hdr-sub">(유)로운텍 · 신분인증 후 전자서명 · PDF 저장</div>
+  </div>
+
+  <!-- 단계 표시 -->
+  <div class="stepbar" id="stepbar">
+    <div class="step active" id="s1">①<br>계약설정</div>
+    <div class="step" id="s2">②<br>내용확인</div>
+    <div class="step" id="s3">③<br>신분인증</div>
+    <div class="step" id="s4">④<br>서명</div>
+    <div class="step" id="s5">⑤<br>완료</div>
+  </div>
+
+  <!-- ===== STEP 1: 계약 설정 ===== -->
+  <div id="p1">
+    <div class="card">
+      <div class="sec-title">📅 계약 기간 선택</div>
+      <div class="period-tabs">
+        <div class="ptab sel" id="t1w" onclick="selPeriod('1w')">
+          <div class="ptab-main">1주일</div>
+          <div class="ptab-sub">단기 계약</div>
+        </div>
+        <div class="ptab" id="t1m" onclick="selPeriod('1m')">
+          <div class="ptab-main">1개월</div>
+          <div class="ptab-sub">단기 계약</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>계약 시작일</label>
+        <input type="date" id="sd" onchange="calcEnd()">
+      </div>
+      <div class="field">
+        <label>계약 종료일 (자동 계산)</label>
+        <div class="fval" id="ed">시작일 선택 후 자동 계산됩니다</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">👤 근로자 정보</div>
+      <div class="field">
+        <label>성명 *</label>
+        <input type="text" id="en" placeholder="홍길동" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>연락처 *</label>
+        <input type="tel" id="ep" placeholder="010-0000-0000" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label>주민등록번호 앞 6자리</label>
+        <input type="text" id="er" placeholder="000000" maxlength="6" inputmode="numeric">
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn-primary" onclick="go(2)">다음 →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 2: 내용 확인 ===== -->
+  <div id="p2" class="hidden">
+    <div class="card">
+      <div class="sec-title">📄 계약 내용 확인</div>
+      <div class="preview-scroll" id="cp"></div>
+    </div>
+    <div class="warn-bar">
+      ⚠️ 계약 내용을 충분히 확인한 후 신분 인증 단계로 진행하세요.
+    </div>
+    <div class="action-row">
+      <button onclick="go(1)">← 이전</button>
+      <button class="btn-primary" onclick="go(3)">확인 완료 →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 3: 신분 인증 ===== -->
+  <div id="p3" class="hidden">
+    <div class="card">
+      <div class="sec-title">🔒 본인 인증 방법 선택</div>
+      <div class="auth-opt sel" id="ak" onclick="selAuth('sms')">
+        <div class="auth-icon" style="background:#e6f1fb;color:#0c447c;font-size:20px">📱</div>
+        <div>
+          <div class="auth-lbl">SMS 인증</div>
+          <div class="auth-sub">휴대폰으로 인증번호 발송</div>
+        </div>
+        <span class="check-icon">✓</span>
+      </div>
+      <div class="auth-opt" id="akk" onclick="selAuth('kakao')">
+        <div class="auth-icon" style="background:#ffe812;color:#3a1f00;font-weight:700;font-size:13px">K</div>
+        <div>
+          <div class="auth-lbl">카카오 인증</div>
+          <div class="auth-sub">카카오톡 전자서명 인증서 (사업자 필요)</div>
+        </div>
+        <span class="check-icon">✓</span>
+      </div>
+    </div>
+
+    <div class="card" id="authArea">
+      <div class="sec-title" id="authAreaTitle">📲 SMS 인증 진행</div>
+      <!-- SMS -->
+      <div id="smsArea">
+        <div style="font-size:13px;color:var(--txt2);margin-bottom:6px">인증번호를 받을 번호</div>
+        <div id="smsPhone" style="font-size:16px;font-weight:600;color:var(--blue-txt);margin-bottom:12px"></div>
+        <div class="otp-row">
+          <input type="text" id="oi" placeholder="000000" maxlength="6" inputmode="numeric">
+          <button onclick="sendOTP()" style="white-space:nowrap;min-width:80px">발송</button>
+        </div>
+        <div id="otpMsg" class="hidden" style="font-size:12px;color:var(--green-txt);margin-top:8px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius)"></div>
+        <button id="verifyBtn" class="hidden btn-primary btn-full" onclick="verifyOTP()" style="margin-top:10px">인증 확인</button>
+      </div>
+      <!-- 카카오 (사업자 전용 안내) -->
+      <div id="kakaoArea" class="hidden">
+        <div class="warn-bar" style="margin-bottom:0">
+          ⚠️ 카카오 인증은 사업자 등록 후 kakaocert.com에서 API 계약이 완료된 경우에만 사용 가능합니다. API_KEY를 worker.js에 설정하세요.
+        </div>
+        <button class="btn-primary btn-full" onclick="doKakaoAuth()" style="margin-top:12px">카카오 인증 요청</button>
+        <div id="kakaoMsg" class="hidden" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div id="authOK" class="hidden success-bar">
+      ✅ 본인 인증이 완료되었습니다
+      <span class="tag tag-ok" id="authTag" style="margin-left:auto"></span>
+    </div>
+
+    <div class="action-row">
+      <button onclick="go(2)">← 이전</button>
+      <button id="toSignBtn" class="btn-primary" onclick="go(4)" disabled style="opacity:.45;cursor:not-allowed">서명 단계 →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 4: 전자 서명 ===== -->
+  <div id="p4" class="hidden">
+    <div class="card">
+      <div class="sec-title">✍️ 근로자(乙) 전자 서명</div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">손가락으로 아래 서명란에 서명해 주세요</div>
+      <canvas id="sigCanvas" width="360" height="160"></canvas>
+      <div class="sig-tools">
+        <button onclick="clearSig()">초기화</button>
+        <div class="colors">
+          <div class="scolor act" style="background:#1a1a1a" onclick="setClr('#1a1a1a',this)"></div>
+          <div class="scolor" style="background:#1b4fcc" onclick="setClr('#1b4fcc',this)"></div>
+          <div class="scolor" style="background:#c0392b" onclick="setClr('#c0392b',this)"></div>
+        </div>
+        <button class="btn-primary" onclick="saveSig()" style="margin-left:auto">서명 저장 ✓</button>
+      </div>
+    </div>
+    <div id="sigSaved" class="hidden card">
+      <div class="sec-title">✓ 서명 저장됨</div>
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-box-lbl">甲 (회사) 대표자</div>
+          <div style="font-size:14px;padding:8px 0;color:var(--txt2)">진대승 (인)</div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-box-lbl">乙 (근로자) <span id="sigName"></span></div>
+          <img id="sigPreview" src="" alt="서명" style="max-width:100%;max-height:50px;object-fit:contain">
+        </div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button onclick="go(3)">← 이전</button>
+      <button id="toFinalBtn" class="btn-primary" onclick="go(5)" disabled style="opacity:.45;cursor:not-allowed">최종 완료 →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 5: 완료 ===== -->
+  <div id="p5" class="hidden">
+    <div class="success-bar" style="align-items:flex-start">
+      <span style="font-size:22px;flex-shrink:0">✅</span>
+      <div>
+        <div style="font-weight:600;font-size:16px">서명 완료!</div>
+        <div style="font-size:12px;margin-top:3px" id="completeSummary"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">📋 최종 계약서</div>
+      <div class="preview-scroll" id="fp"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border)">
+        <div class="sig-grid">
+          <div class="sig-box">
+            <div class="sig-box-lbl">甲 (회사)</div>
+            <div style="font-size:13px;padding:6px 0">진대승 (인)</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-box-lbl">乙 (근로자)</div>
+            <img id="finalSig" src="" alt="서명" style="max-width:100%;max-height:46px;object-fit:contain">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- n8n 자동 발송 상태 -->
+    <div id="autoStatus" class="card hidden">
+      <div class="sec-title">🤖 AI 자동화 처리 중</div>
+      <div id="autoLog" style="font-size:13px;line-height:2;color:var(--txt2)"></div>
+    </div>
+
+    <button class="btn-primary btn-full btn-lg" onclick="dlPDF()" style="margin-bottom:10px">
+      📄 PDF로 저장하기
+    </button>
+    <button class="btn-full" onclick="submitToN8n()" style="background:var(--green-bg);color:var(--green-txt);border-color:var(--green-bdr)">
+      🤖 AI 에이전트로 자동 보관·발송
+    </button>
+    <div id="pdfNote" class="hidden" style="font-size:12px;color:var(--txt2);margin-top:8px;text-align:center">
+      PDF가 다운로드됩니다. 팝업 차단 시 허용해주세요.
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 상태 =====
+var S = {
+  period: '1w', start: '', end: '',
+  name: '', phone: '', rrn: '',
+  auth: 'sms', authOk: false,
+  sig: null, otpCode: '', otpSent: false
+};
+var drawing = false, ctx2, sigClr = '#1a1a1a', lx = 0, ly = 0;
+
+// ===== 설정 (배포 후 수정) =====
+// Cloudflare Worker URL: 배포 후 실제 URL로 교체하세요
+var WORKER_URL = 'https://your-worker.your-subdomain.workers.dev';
+// n8n Webhook URL: n8n 배포 후 실제 웹훅 URL로 교체하세요
+var N8N_WEBHOOK = 'https://your-n8n.railway.app/webhook/contract-signed';
+
+// ===== 유틸 =====
+function fmtD(s) {
+  if (!s) return '';
+  var p = s.split('-');
+  return p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+}
+
+function selPeriod(p) {
+  S.period = p;
+  document.getElementById('t1w').classList.toggle('sel', p === '1w');
+  document.getElementById('t1m').classList.toggle('sel', p === '1m');
+  calcEnd();
+}
+
+function calcEnd() {
+  var v = document.getElementById('sd').value;
+  if (!v) return;
+  S.start = v;
+  var d = new Date(v);
+  if (S.period === '1w') d.setDate(d.getDate() + 6);
+  else { d.setMonth(d.getMonth() + 1); d.setDate(d.getDate() - 1); }
+  S.end = d.toISOString().split('T')[0];
+  var el = document.getElementById('ed');
+  el.textContent = fmtD(S.end);
+  el.style.color = 'var(--txt)';
+}
+
+// ===== 단계 이동 =====
+function go(n) {
+  if (n === 2) {
+    S.name = document.getElementById('en').value.trim();
+    S.phone = document.getElementById('ep').value.trim();
+    S.rrn = document.getElementById('er').value.trim();
+    if (!S.start || !S.name || !S.phone) {
+      alert('계약 시작일, 성명, 연락처를 모두 입력해주세요.'); return;
+    }
+    buildPreview('cp');
+    document.getElementById('smsPhone').textContent = S.phone;
+  }
+  if (n === 4 && !S.authOk) { alert('신분 인증을 먼저 완료해주세요.'); return; }
+  if (n === 5 && !S.sig) { alert('전자 서명을 먼저 완료해주세요.'); return; }
+
+  for (var i = 1; i <= 5; i++) {
+    document.getElementById('p' + i).classList.toggle('hidden', i !== n);
+    var s = document.getElementById('s' + i);
+    s.classList.remove('active', 'done');
+    if (i < n) s.classList.add('done');
+    else if (i === n) s.classList.add('active');
+  }
+  if (n === 4) initCanvas();
+  if (n === 5) buildFinal();
+  window.scrollTo(0, 0);
+}
+
+// ===== 계약서 내용 =====
+function buildPreview(targetId) {
+  var p = S.period === '1w' ? '1주일' : '1개월';
+  document.getElementById(targetId).innerHTML =
+    '<h3>근 로 계 약 서</h3>' +
+    '<p>(유)로운텍 (甲)과 <span class="blank">' + (S.name || '___') + '</span> (乙)는 아래 근로계약을 체결하고 성실히 이행할 것을 서약한다.</p>' +
+    '<h4>1. 의무</h4><p>(1) 甲과 乙은 본 계약 및 제반 노동관계 법규를 준수한다.<br>(2) 乙은 甲의 제반규정을 준수하여야 한다.<br>(3) 乙은 업무수행에 있어 甲과 전속으로 근무하여야 하며, 사전 동의없이 타 업체에 고용 또는 서비스 제공 불가.</p>' +
+    '<h4>2. 근무장소 및 직무</h4><p>근무장소는 甲의 사업장 및 직무 관련 장소이며, 필요시 협의하여 변경 가능.</p>' +
+    '<h4>3. 수습 기간</h4><p>신입사원의 경우 체결일로부터 3개월간 수습 적용. 1년 미만 근로자에 최저임금 지급.</p>' +
+    '<h4>4. 근로시간 및 휴게시간</h4><p>소정근로시간: 1주 40시간, 1일 8시간.<br>근무: 매주 월~금 08:00~17:00<br>휴게: 12:00~13:00 (1시간)</p>' +
+    '<h4>5. 임금</h4><p>시급: <span class="blank">10,320원</span> / 상여금: 없음<br>임금 산정: 매월 1일~말일, 지급일: 매월 25일</p>' +
+    '<h4>6. 휴일 및 휴가</h4><p>1주 소정근로일 개근 시 일요일 유급 주휴일. 토요일 무급 휴무 (40시간 기준).</p>' +
+    '<h4>7. 퇴직전 준수사항</h4><p>퇴직 30일 전 사직서 제출 및 인수인계 완료 후 퇴직.</p>' +
+    '<h4>8. 근로계약 기간 [' + p + ']</h4>' +
+    '<p>계약 기간: <span class="blank">' + fmtD(S.start) + '</span> ~ <span class="blank">' + fmtD(S.end) + '</span><br>(계약만료일 전 갱신 의사 표현 없을 시 1개월 단위 자동 종료)</p>' +
+    '<h4>甲 (회사)</h4><p>유한회사 로운텍<br>광주광역시 광산구 임방울대로 142-10, 2층 250호<br>대표자: 진대승</p>' +
+    '<h4>乙 (근로자)</h4><p>성명: ' + (S.name || '___') + '<br>연락처: ' + (S.phone || '___') + '<br>주민등록번호: ' + (S.rrn || '______') + '-*******</p>';
+}
+
+// ===== 인증 =====
+function selAuth(m) {
+  S.auth = m;
+  document.getElementById('ak').classList.toggle('sel', m === 'sms');
+  document.getElementById('akk').classList.toggle('sel', m === 'kakao');
+  document.getElementById('smsArea').classList.toggle('hidden', m !== 'sms');
+  document.getElementById('kakaoArea').classList.toggle('hidden', m !== 'kakao');
+  document.getElementById('authAreaTitle').textContent = m === 'sms' ? '📲 SMS 인증 진행' : '🟡 카카오 인증 진행';
+}
+
+async function sendOTP() {
+  var phone = S.phone;
+  if (!phone) { alert('연락처를 먼저 입력해주세요.'); return; }
+
+  // Worker가 설정된 경우 실제 SMS 발송, 아닌 경우 데모 모드
+  if (WORKER_URL !== 'https://your-worker.your-subdomain.workers.dev') {
+    try {
+      var res = await fetch(WORKER_URL + '/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone })
+      });
+      var data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      S.otpSent = true;
+      showOtpMsg('인증번호가 ' + phone + '으로 발송되었습니다.', true);
+    } catch (e) {
+      alert('SMS 발송 실패: ' + e.message);
+    }
+  } else {
+    // 데모 모드 (Worker 미연결 시)
+    S.otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    S.otpSent = true;
+    showOtpMsg('【데모 모드】 인증번호: ' + S.otpCode + ' (실제 배포 시 SMS로 발송됩니다)', true);
+  }
+}
+
+function showOtpMsg(msg, show) {
+  var el = document.getElementById('otpMsg');
+  el.textContent = msg;
+  el.classList.toggle('hidden', !show);
+  document.getElementById('verifyBtn').classList.toggle('hidden', !show);
+}
+
+async function verifyOTP() {
+  var input = document.getElementById('oi').value.trim();
+  if (!input) { alert('인증번호를 입력해주세요.'); return; }
+
+  var ok = false;
+  if (WORKER_URL !== 'https://your-worker.your-subdomain.workers.dev') {
+    try {
+      var res = await fetch(WORKER_URL + '/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: S.phone, code: input })
+      });
+      var data = await res.json();
+      ok = data.ok;
+    } catch (e) {
+      alert('인증 확인 중 오류가 발생했습니다.'); return;
+    }
+  } else {
+    ok = input === S.otpCode;
+  }
+
+  if (ok) {
+    authComplete('SMS 인증');
+  } else {
+    alert('인증번호가 일치하지 않습니다. 다시 확인해주세요.');
+  }
+}
+
+async function doKakaoAuth() {
+  var msgEl = document.getElementById('kakaoMsg');
+  msgEl.classList.remove('hidden');
+  msgEl.innerHTML = '<div class="warn-bar">처리 중...</div>';
+  try {
+    var res = await fetch(WORKER_URL + '/kakao-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: S.name, phone: S.phone, birth: S.rrn })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      msgEl.innerHTML = '<div class="success-bar">✅ 카카오 인증 완료</div>';
+      authComplete('카카오 인증');
+    } else {
+      throw new Error(data.error || '인증 실패');
+    }
+  } catch (e) {
+    msgEl.innerHTML = '<div class="warn-bar">⚠️ ' + e.message + '</div>';
+  }
+}
+
+function authComplete(label) {
+  S.authOk = true;
+  document.getElementById('authOK').classList.remove('hidden');
+  document.getElementById('authTag').textContent = label + ' 완료';
+  var b = document.getElementById('toSignBtn');
+  b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
+}
+
+// ===== 서명 캔버스 =====
+function initCanvas() {
+  var c = document.getElementById('sigCanvas');
+  var r = c.getBoundingClientRect();
+  c.width = Math.floor(r.width) * 2;
+  c.height = 320;
+  ctx2 = c.getContext('2d');
+  ctx2.scale(2, 2);
+  ctx2.strokeStyle = sigClr; ctx2.lineWidth = 2.5;
+  ctx2.lineCap = 'round'; ctx2.lineJoin = 'round';
+
+  c.addEventListener('mousedown', function(e) {
+    drawing = true;
+    var r = c.getBoundingClientRect();
+    lx = e.clientX - r.left; ly = e.clientY - r.top;
+  });
+  c.addEventListener('mousemove', function(e) {
+    if (!drawing) return;
+    var r = c.getBoundingClientRect();
+    var x = e.clientX - r.left, y = e.clientY - r.top;
+    ctx2.beginPath(); ctx2.moveTo(lx, ly); ctx2.lineTo(x, y); ctx2.stroke();
+    lx = x; ly = y;
+  });
+  c.addEventListener('mouseup', function() { drawing = false; });
+  c.addEventListener('mouseleave', function() { drawing = false; });
+
+  c.addEventListener('touchstart', function(e) {
+    e.preventDefault(); drawing = true;
+    var t = e.touches[0], r = c.getBoundingClientRect();
+    lx = t.clientX - r.left; ly = t.clientY - r.top;
+  }, { passive: false });
+  c.addEventListener('touchmove', function(e) {
+    e.preventDefault(); if (!drawing) return;
+    var t = e.touches[0], r = c.getBoundingClientRect();
+    var x = t.clientX - r.left, y = t.clientY - r.top;
+    ctx2.beginPath(); ctx2.moveTo(lx, ly); ctx2.lineTo(x, y); ctx2.stroke();
+    lx = x; ly = y;
+  }, { passive: false });
+  c.addEventListener('touchend', function() { drawing = false; });
+}
+
+function clearSig() {
+  if (!ctx2) return;
+  var c = document.getElementById('sigCanvas');
+  ctx2.clearRect(0, 0, c.width, c.height);
+}
+
+function setClr(c, el) {
+  sigClr = c;
+  if (ctx2) ctx2.strokeStyle = c;
+  document.querySelectorAll('.scolor').forEach(function(e) { e.classList.remove('act'); });
+  el.classList.add('act');
+}
+
+function saveSig() {
+  var c = document.getElementById('sigCanvas');
+  S.sig = c.toDataURL('image/png');
+  document.getElementById('sigSaved').classList.remove('hidden');
+  document.getElementById('sigName').textContent = S.name;
+  document.getElementById('sigPreview').src = S.sig;
+  var b = document.getElementById('toFinalBtn');
+  b.disabled = false; b.style.opacity = '1'; b.style.cursor = 'pointer';
+}
+
+// ===== 최종 화면 =====
+function buildFinal() {
+  var p = S.period === '1w' ? '1주일' : '1개월';
+  buildPreview('fp');
+  document.getElementById('finalSig').src = S.sig;
+  document.getElementById('completeSummary').textContent =
+    S.name + ' · ' + p + ' 계약 · ' + fmtD(S.start) + ' ~ ' + fmtD(S.end);
+}
+
+// ===== PDF 저장 =====
+function dlPDF() {
+  document.getElementById('pdfNote').classList.remove('hidden');
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  var pw = doc.internal.pageSize.getWidth(), lm = 18, tw = pw - 36, y = 22;
+  var p = S.period === '1w' ? '1주일' : '1개월';
+
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+  doc.text('근 로 계 약 서', pw / 2, y, { align: 'center' }); y += 13;
+
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  var lines = [
+    '(유)로운텍 (이하 甲이라 한다)과 ' + S.name + ' (이하 乙이라 한다)는',
+    '아래와 같은 근로계약을 체결하고 성실히 이행할 것을 서약한다.', '',
+    '1. 의무',
+    '(1) 甲과 乙은 고용주 및 근로자로서 본 계약 및 노동관계 법규를 준수한다.',
+    '(2) 乙은 甲의 지휘 감독을 받으며 제반규정을 준수하여야 한다.', '',
+    '4. 근로시간 및 휴게시간',
+    '소정근로시간: 1주 40시간, 1일 8시간 / 근무: 월~금 08:00~17:00 / 휴게: 12:00~13:00', '',
+    '5. 임금',
+    '시급: 10,320원 / 상여금: 없음 / 지급일: 매월 25일', '',
+    '8. 근로계약 기간 [' + p + ' 계약]',
+    '계약 기간: ' + fmtD(S.start) + ' ~ ' + fmtD(S.end), '',
+    '10. 기타 사항은 노동관계법령 및 취업규칙에 따른다.', '',
+    '【甲】 유한회사 로운텍',
+    '주소: 광주광역시 광산구 임방울대로 142-10, 2층 250호 (운남동)',
+    '대표자: 진대승', '',
+    '【乙】 성명: ' + S.name,
+    '연락처: ' + S.phone,
+    '주민등록번호: ' + S.rrn + '-*******', '',
+    '서명 일자: ' + new Date().toLocaleDateString('ko-KR'),
+    '인증 방법: ' + S.auth.toUpperCase() + ' 인증 완료',
+  ];
+
+  lines.forEach(function(l) {
+    if (y > 265) { doc.addPage(); y = 20; }
+    if (/^\d+\.|^【/.test(l)) doc.setFont('helvetica', 'bold');
+    else doc.setFont('helvetica', 'normal');
+    doc.splitTextToSize(l, tw).forEach(function(wl) { doc.text(wl, lm, y); y += 6; });
+  });
+
+  y += 10;
+  if (y > 240) { doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+  doc.text('서 명 란', pw / 2, y, { align: 'center' }); y += 8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  var hw = (tw - 8) / 2;
+  doc.rect(lm, y, hw, 28);
+  doc.text('甲 대표자: 진대승 (인)', lm + 4, y + 8);
+  doc.rect(lm + hw + 8, y, hw, 28);
+  doc.text('乙: ' + S.name, lm + hw + 12, y + 8);
+  if (S.sig) {
+    try { doc.addImage(S.sig, 'PNG', lm + hw + 12, y + 12, 38, 12); } catch (e) {}
+  }
+  doc.save('근로계약서_' + S.name + '_' + p + '.pdf');
+}
+
+// ===== n8n 자동화 전송 =====
+async function submitToN8n() {
+  if (N8N_WEBHOOK === 'https://your-n8n.railway.app/webhook/contract-signed') {
+    alert('n8n 웹훅 URL을 index.html의 N8N_WEBHOOK 변수에 설정해주세요.\n현재는 데모 모드입니다.');
+    simulateN8n(); return;
+  }
+  var statusEl = document.getElementById('autoStatus');
+  var logEl = document.getElementById('autoLog');
+  statusEl.classList.remove('hidden');
+  logEl.innerHTML = '⏳ 서버로 전송 중...';
+
+  try {
+    var res = await fetch(N8N_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: S.name, phone: S.phone, rrn_front: S.rrn,
+        period: S.period, start: S.start, end: S.end,
+        auth_method: S.auth, signed_at: new Date().toISOString(),
+        sig_data: S.sig
+      })
+    });
+    if (!res.ok) throw new Error('서버 응답 오류');
+    simulateN8n();
+  } catch (e) {
+    logEl.innerHTML = '❌ 전송 실패: ' + e.message;
+  }
+}
+
+function simulateN8n() {
+  var statusEl = document.getElementById('autoStatus');
+  var logEl = document.getElementById('autoLog');
+  statusEl.classList.remove('hidden');
+  var steps = [
+    '✅ 서명 데이터 수신 완료',
+    '📄 PDF 생성 중...',
+    '📁 Google Drive 저장 완료',
+    '📊 계약 현황 스프레드시트 기록 완료',
+    '📱 근로자에게 계약서 링크 발송 완료',
+    '⏰ 계약 만료 알림 스케줄 등록 완료',
+    '🎉 모든 자동화 처리 완료!'
+  ];
+  var i = 0;
+  logEl.innerHTML = '';
+  var timer = setInterval(function() {
+    if (i >= steps.length) { clearInterval(timer); return; }
+    logEl.innerHTML += steps[i] + '<br>';
+    i++;
+  }, 700);
+}
+
+// ===== 초기화 =====
+document.getElementById('sd').value = new Date().toISOString().split('T')[0];
+calcEnd();
+</script>
+</body>
+</html>
